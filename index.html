@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>نظام إدارة بيانات المشاريع (نموذج تجريبي)</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f3f5f8; --card:#fff; --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb;
+    --brand:#1d4ed8; --brand-d:#1e3a8a; --ok:#15803d; --warn:#b45309; --bad:#b91c1c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Tajawal',Tahoma,sans-serif;background:var(--bg);color:var(--ink);font-size:15px}
+  header{background:var(--brand-d);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  header h1{margin:0;font-size:19px;font-weight:700}
+  .user-box{display:flex;align-items:center;gap:10px;font-size:14px}
+  .user-box select{padding:6px 10px;border-radius:6px;border:0;font-family:inherit}
+  .badge-role{background:rgba(255,255,255,.18);padding:3px 10px;border-radius:20px;font-size:12px}
+  main{max-width:1200px;margin:22px auto;padding:0 16px}
+  .notice{background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:10px 14px;border-radius:8px;margin-bottom:16px;font-size:13px}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+  .toolbar input,.toolbar select{padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:14px;background:#fff}
+  .toolbar input[type=search]{flex:1;min-width:220px}
+  .spacer{flex:1}
+  button{font-family:inherit;cursor:pointer;border-radius:8px;border:1px solid transparent;padding:9px 16px;font-size:14px}
+  .btn{background:var(--brand);color:#fff}.btn:hover{background:var(--brand-d)}
+  .btn-sec{background:#fff;border-color:var(--line);color:var(--ink)}.btn-sec:hover{background:#f9fafb}
+  .btn-sm{padding:5px 12px;font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:11px 14px;text-align:right;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{background:#f9fafb;font-size:13px;color:var(--muted);font-weight:500;white-space:nowrap}
+  tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:#fafbff}
+  .status{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:500}
+  .s-plan{background:#e0e7ff;color:#3730a3}.s-run{background:#dbeafe;color:#1d4ed8}
+  .s-late{background:#fee2e2;color:var(--bad)}.s-done{background:#dcfce7;color:var(--ok)}.s-hold{background:#f3f4f6;color:#4b5563}
+  .bar{background:#e5e7eb;border-radius:20px;height:8px;width:90px;display:inline-block;vertical-align:middle;margin-left:8px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--brand)}
+  .small{font-size:12px;color:var(--muted)}
+  .empty{padding:40px;text-align:center;color:var(--muted)}
+  .count{color:var(--muted);font-size:13px;margin:10px 2px}
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(17,24,39,.55);display:none;align-items:flex-start;justify-content:center;padding:30px 12px;overflow:auto;z-index:20}
+  .overlay.open{display:flex}
+  .modal{background:#fff;border-radius:14px;width:100%;max-width:680px;padding:22px 24px}
+  .modal h2{margin:0 0 4px;font-size:18px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field.full{grid-column:1/-1}
+  .field label{font-size:13px;font-weight:500}
+  .req{color:var(--bad)}
+  .field input,.field select,.field textarea{padding:9px 11px;border:1px solid #d1d5db;border-radius:8px;font-family:inherit;font-size:14px;background:#fff}
+  .field textarea{min-height:80px;resize:vertical}
+  .field input[readonly],.field input:disabled,.field select:disabled,.field textarea:disabled{background:#f3f4f6;color:#6b7280;cursor:not-allowed}
+  .field.err input,.field.err select,.field.err textarea{border-color:var(--bad)}
+  .msg{color:var(--bad);font-size:12px;min-height:0}
+  .hint{font-size:12px;color:var(--muted)}
+  .actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-start}
+  .meta{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);font-size:12px;color:var(--muted)}
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:11px 20px;border-radius:10px;display:none;z-index:50;font-size:14px}
+  @media(max-width:700px){.grid{grid-template-columns:1fr}.hide-m{display:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>نظام إدارة بيانات المشاريع</h1>
+  <div class="user-box">
+    <span>المستخدم الحالي:</span>
+    <select id="userSelect"></select>
+    <span class="badge-role" id="roleBadge"></span>
+  </div>
+</header>
+
+<main>
+  <div class="notice">
+    مشروع تجريبي شخصي لعرض الفكرة: تسجيل الدخول هنا محاكاة (اختيار مستخدم من القائمة أعلاه)، والبيانات تُحفظ في متصفحك فقط.
+    في النسخة الفعلية يُستبدل ذلك بتسجيل دخول Microsoft 365 وقراءة/كتابة ملف Excel على OneDrive عبر Microsoft Graph.
+  </div>
+
+  <div class="toolbar">
+    <input type="search" id="q" placeholder="ابحث باسم المشروع أو المدير أو رقم المشروع...">
+    <select id="fStatus"><option value="">كل الحالات</option></select>
+    <select id="fManager"></select>
+    <span class="spacer"></span>
+    <button class="btn-sec" id="btnCsv">تصدير CSV</button>
+    <button class="btn" id="btnAdd">+ مشروع جديد</button>
+    <button class="btn-sec" id="btnReset" title="إعادة البيانات التجريبية">إعادة ضبط</button>
+  </div>
+
+  <div class="count" id="count"></div>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>الرقم</th><th>اسم المشروع</th><th class="hide-m">مدير المشروع</th><th>الحالة</th>
+          <th>نسبة الإنجاز</th><th class="hide-m">تاريخ الانتهاء</th><th class="hide-m">آخر تحديث</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="empty" style="display:none">لا توجد مشاريع مطابقة.</div>
+  </div>
+</main>
+
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h2 id="mTitle"></h2>
+    <div class="small" id="mSub"></div>
+    <form id="form" novalidate>
+      <div class="grid" id="grid"></div>
+      <div class="meta" id="meta"></div>
+      <div class="actions">
+        <button type="submit" class="btn" id="btnSave">حفظ التعديلات</button>
+        <button type="button" class="btn-sec" id="btnCancel">إلغاء</button>
+      </div>
+    </form>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+/* ========= الإعدادات ========= */
+const STORE_KEY = 'pm_demo_v1';
+const STATUSES = ['قيد التخطيط','قيد التنفيذ','متأخر','مكتمل','متوقف'];
+const STATUS_CLASS = {'قيد التخطيط':'s-plan','قيد التنفيذ':'s-run','متأخر':'s-late','مكتمل':'s-done','متوقف':'s-hold'};
+const USERS = [
+  {id:'u0', name:'أحمد الشمري',   role:'admin'},
+  {id:'u1', name:'سارة العتيبي',  role:'pm'},
+  {id:'u2', name:'خالد الغامدي',  role:'pm'},
+  {id:'u3', name:'منى الحربي',    role:'pm'}
+];
+const ROLE_LABEL = {admin:'مدير النظام', pm:'مدير مشروع'};
+
+/*
+  صلاحيات الحقول حسب الدور:
+  - admin: كل الحقول قابلة للتعديل
+  - pm: الحقول المذكورة في pmEditable فقط، والباقي للقراءة فقط
+*/
+const FIELDS = [
+  {key:'name',     label:'اسم المشروع',    type:'text',   required:true, pmEditable:false, full:true},
+  {key:'manager',  label:'مدير المشروع',   type:'manager',required:true, pmEditable:false},
+  {key:'status',   label:'الحالة',         type:'status', required:true, pmEditable:true},
+  {key:'start',    label:'تاريخ البدء',    type:'date',   required:true, pmEditable:false},
+  {key:'end',      label:'تاريخ الانتهاء', type:'date',   required:true, pmEditable:true},
+  {key:'percent',  label:'نسبة الإنجاز (%)',type:'number',required:true, pmEditable:true, min:0, max:100},
+  {key:'budget',   label:'الميزانية (ريال)',type:'number',required:false,pmEditable:false,min:0},
+  {key:'delay',    label:'سبب التأخير',    type:'textarea',required:false,pmEditable:true, full:true, showWhen:d=>d.status==='متأخر', requiredWhen:d=>d.status==='متأخر'},
+  {key:'notes',    label:'ملاحظات',        type:'textarea',required:false,pmEditable:true, full:true}
+];
+
+const SEED = [
+  {id:'P-001',name:'تطوير بوابة الخدمات الإلكترونية',manager:'سارة العتيبي',status:'قيد التنفيذ',start:'2026-03-01',end:'2026-12-15',percent:55,budget:450000,delay:'',notes:'المرحلة الثانية قيد الاختبار.'},
+  {id:'P-002',name:'ترحيل البيانات إلى النظام الجديد',manager:'خالد الغامدي',status:'متأخر',start:'2026-01-10',end:'2026-09-30',percent:70,budget:220000,delay:'تأخر استلام البيانات من الإدارة المالية.',notes:''},
+  {id:'P-003',name:'تحديث شبكة الفروع',manager:'سارة العتيبي',status:'مكتمل',start:'2026-02-01',end:'2026-06-30',percent:100,budget:310000,delay:'',notes:'تم التسليم والاعتماد.'},
+  {id:'P-004',name:'لوحة مؤشرات الأداء التنفيذية',manager:'منى الحربي',status:'قيد التخطيط',start:'2026-11-01',end:'2027-02-28',percent:5,budget:120000,delay:'',notes:''},
+  {id:'P-005',name:'برنامج تدريب الموظفين الجدد',manager:'منى الحربي',status:'قيد التنفيذ',start:'2026-08-15',end:'2026-11-30',percent:40,budget:60000,delay:'',notes:''},
+  {id:'P-006',name:'مراجعة أمن المعلومات السنوية',manager:'خالد الغامدي',status:'متوقف',start:'2026-05-01',end:'2026-10-31',percent:25,budget:90000,delay:'',notes:'بانتظار موافقة الإدارة العليا.'}
+];
+
+/* ========= الحالة ========= */
+let data = load();
+let currentUser = USERS[0];
+let editingId = null;   // null = مشروع جديد
+
+function load(){
+  try{ const s = localStorage.getItem(STORE_KEY); if(s) return JSON.parse(s); }catch(e){}
+  return SEED.map(p=>({...p, updatedBy:'النظام', updatedAt:new Date().toISOString()}));
+}
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(data)); }catch(e){} }
+
+/* ========= أدوات ========= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate = d => d ? new Date(d+'T00:00:00').toLocaleDateString('ar-SA-u-ca-gregory',{year:'numeric',month:'short',day:'numeric'}) : '—';
+const fmtStamp = iso => new Date(iso).toLocaleString('ar-SA-u-ca-gregory',{dateStyle:'medium',timeStyle:'short'});
+const isAdmin = () => currentUser.role==='admin';
+function toast(t){ const el=$('#toast'); el.textContent=t; el.style.display='block'; clearTimeout(toast.t); toast.t=setTimeout(()=>el.style.display='none',2600); }
+
+/* الصلاحية: مدير المشروع يرى مشاريعه فقط */
+function visibleProjects(){
+  return isAdmin() ? data : data.filter(p => p.manager === currentUser.name);
+}
+function canEditProject(p){ return isAdmin() || p.manager === currentUser.name; }
+
+/* ========= الواجهة الرئيسية ========= */
+function initControls(){
+  $('#userSelect').innerHTML = USERS.map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join('');
+  $('#fStatus').innerHTML = '<option value="">كل الحالات</option>' + STATUSES.map(s=>`<option>${s}</option>`).join('');
+  refreshManagerFilter();
+}
+function refreshManagerFilter(){
+  const sel = $('#fManager');
+  const keep = sel.value;
+  if(isAdmin()){
+    sel.style.display='';
+    const names = USERS.filter(u=>u.role==='pm').map(u=>u.name);
+    sel.innerHTML = '<option value="">كل المدراء</option>' + names.map(n=>`<option>${esc(n)}</option>`).join('');
+    sel.value = names.includes(keep) ? keep : '';
+  }else{
+    sel.style.display='none'; sel.value='';
+  }
+}
+
+function render(){
+  $('#roleBadge').textContent = ROLE_LABEL[currentUser.role];
+  $('#btnAdd').style.display = isAdmin() ? '' : 'none';
+  $('#btnReset').style.display = isAdmin() ? '' : 'none';
+
+  const q = $('#q').value.trim().toLowerCase();
+  const fs = $('#fStatus').value, fm = $('#fManager').value;
+  const list = visibleProjects().filter(p =>
+    (!q || [p.id,p.name,p.manager].some(v=>String(v).toLowerCase().includes(q))) &&
+    (!fs || p.status===fs) && (!fm || p.manager===fm)
+  );
+
+  $('#count').textContent = `عدد المشاريع المعروضة: ${list.length}` + (isAdmin() ? ` من ${data.length}` : '');
+  $('#empty').style.display = list.length ? 'none' : 'block';
+  $('#rows').innerHTML = list.map(p=>`
+    <tr>
+      <td>${esc(p.id)}</td>
+      <td><strong>${esc(p.name)}</strong></td>
+      <td class="hide-m">${esc(p.manager)}</td>
+      <td><span class="status ${STATUS_CLASS[p.status]||''}">${esc(p.status)}</span></td>
+      <td>${p.percent}%<span class="bar"><i style="width:${Math.min(100,p.percent)}%"></i></span></td>
+      <td class="hide-m">${fmtDate(p.end)}</td>
+      <td class="hide-m small">${esc(p.updatedBy)}<br>${fmtStamp(p.updatedAt)}</td>
+      <td><button class="btn-sec btn-sm" data-edit="${esc(p.id)}">${canEditProject(p)?'تعديل':'عرض'}</button></td>
+    </tr>`).join('');
+}
+
+/* ========= النموذج ========= */
+function openForm(id){
+  editingId = id;
+  const isNew = id === null;
+  const rec = isNew
+    ? {id:nextId(),name:'',manager:USERS.find(u=>u.role==='pm').name,status:'قيد التخطيط',start:'',end:'',percent:0,budget:0,delay:'',notes:''}
+    : {...data.find(p=>p.id===id)};
+  const editable = isNew ? isAdmin() : canEditProject(rec);
+
+  $('#mTitle').textContent = isNew ? 'مشروع جديد' : `${rec.id} — ${rec.name}`;
+  $('#mSub').textContent = isAdmin() ? 'صلاحية مدير النظام: يمكنك تعديل جميع الحقول.'
+                                     : 'صلاحية مدير مشروع: يمكنك تعديل الحقول المسموح بها فقط، والبقية للقراءة.';
+  $('#grid').innerHTML = FIELDS.map(f => fieldHtml(f, rec, editable)).join('');
+  $('#meta').textContent = isNew ? '' : `آخر تحديث بواسطة: ${rec.updatedBy} — ${fmtStamp(rec.updatedAt)}`;
+  $('#btnSave').style.display = editable ? '' : 'none';
+
+  // إظهار/إخفاء الحقول الشرطية عند تغيير الحالة
+  $('#grid').addEventListener('input', applyConditional);
+  applyConditional();
+  $('#overlay').classList.add('open');
+}
+
+function fieldHtml(f, rec, editable){
+  const can = editable && (isAdmin() || f.pmEditable);
+  const dis = can ? '' : 'disabled';
+  const v = rec[f.key] ?? '';
+  const star = f.required ? '<span class="req"> *</span>' : '';
+  let input;
+  switch(f.type){
+    case 'status':
+      input = `<select name="${f.key}" ${dis}>${STATUSES.map(s=>`<option ${s===v?'selected':''}>${s}</option>`).join('')}</select>`; break;
+    case 'manager':
+      input = `<select name="${f.key}" ${dis}>${USERS.filter(u=>u.role==='pm').map(u=>`<option ${u.name===v?'selected':''}>${esc(u.name)}</option>`).join('')}</select>`; break;
+    case 'textarea':
+      input = `<textarea name="${f.key}" ${dis}>${esc(v)}</textarea>`; break;
+    case 'number':
+      input = `<input type="number" name="${f.key}" value="${esc(v)}" ${f.min!=null?`min="${f.min}"`:''} ${f.max!=null?`max="${f.max}"`:''} ${dis}>`; break;
+    case 'date':
+      input = `<input type="date" name="${f.key}" value="${esc(v)}" ${dis}>`; break;
+    default:
+      input = `<input type="text" name="${f.key}" value="${esc(v)}" ${dis}>`;
+  }
+  const hint = !can && editable ? '<div class="hint">للقراءة فقط — يعدّله مدير النظام</div>' : '';
+  return `<div class="field ${f.full?'full':''}" data-field="${f.key}">
+            <label>${f.label}${star}</label>${input}${hint}<div class="msg"></div>
+          </div>`;
+}
+
+function currentValues(){
+  const o = {};
+  FIELDS.forEach(f=>{
+    const el = document.querySelector(`[name="${f.key}"]`);
+    o[f.key] = el ? el.value : '';
+  });
+  return o;
+}
+
+/* حقل «سبب التأخير» يظهر فقط عندما تكون الحالة «متأخر» */
+function applyConditional(){
+  const d = currentValues();
+  FIELDS.forEach(f=>{
+    if(f.showWhen){
+      const box = document.querySelector(`[data-field="${f.key}"]`);
+      box.style.display = f.showWhen(d) ? '' : 'none';
+    }
+  });
+}
+
+/* ========= التحقق من صحة البيانات ========= */
+function validate(d){
+  const errors = {};
+  FIELDS.forEach(f=>{
+    const visible = !f.showWhen || f.showWhen(d);
+    if(!visible) return;
+    const val = String(d[f.key]).trim();
+    const required = f.required || (f.requiredWhen && f.requiredWhen(d));
+    if(required && !val) errors[f.key] = 'هذا الحقل مطلوب';
+  });
+  if(!errors.name && d.name.trim().length < 3) errors.name = 'اسم المشروع قصير جدًا';
+
+  const pct = Number(d.percent);
+  if(!errors.percent){
+    if(!Number.isFinite(pct) || pct < 0 || pct > 100) errors.percent = 'النسبة يجب أن تكون بين 0 و 100';
+    else if(d.status==='مكتمل' && pct !== 100) errors.percent = 'المشروع المكتمل يجب أن تكون نسبته 100%';
+    else if(d.status==='قيد التخطيط' && pct > 20) errors.percent = 'مشروع قيد التخطيط لا تتجاوز نسبته 20%';
+  }
+  if(d.budget !== '' && Number(d.budget) < 0) errors.budget = 'الميزانية لا يمكن أن تكون سالبة';
+  if(d.start && d.end && d.end < d.start) errors.end = 'تاريخ الانتهاء يجب أن يكون بعد تاريخ البدء';
+  return errors;
+}
+
+function showErrors(errors){
+  document.querySelectorAll('.field').forEach(el=>{
+    const k = el.dataset.field;
+    el.classList.toggle('err', !!errors[k]);
+    el.querySelector('.msg').textContent = errors[k] || '';
+  });
+}
+
+function nextId(){
+  const n = data.map(p=>parseInt(p.id.split('-')[1],10)).reduce((a,b)=>Math.max(a,b),0) + 1;
+  return 'P-' + String(n).padStart(3,'0');
+}
+
+function closeForm(){ $('#overlay').classList.remove('open'); editingId = null; }
+
+function submitForm(e){
+  e.preventDefault();
+  const d = currentValues();
+  const errors = validate(d);
+  showErrors(errors);
+  if(Object.keys(errors).length){
+    toast('الرجاء تصحيح الحقول المظللة قبل الحفظ');
+    const first = document.querySelector('.field.err'); if(first) first.scrollIntoView({block:'center'});
+    return;
+  }
+  const now = new Date().toISOString();
+  const clean = {
+    ...d,
+    name:d.name.trim(), percent:Number(d.percent), budget:Number(d.budget||0),
+    delay: d.status==='متأخر' ? d.delay.trim() : '',
+    notes:d.notes.trim()
+  };
+
+  if(editingId === null){
+    if(!isAdmin()) return;
+    data.unshift({id:nextId(), ...clean, updatedBy:currentUser.name, updatedAt:now});
+    toast('تمت إضافة المشروع');
+  }else{
+    const i = data.findIndex(p=>p.id===editingId);
+    const old = data[i];
+    if(!canEditProject(old)) return toast('لا تملك صلاحية تعديل هذا المشروع');
+    // مدير المشروع: نحتفظ بالقيم الأصلية للحقول غير المسموح بها (حماية إضافية)
+    const merged = {...old};
+    FIELDS.forEach(f=>{ if(isAdmin() || f.pmEditable) merged[f.key] = clean[f.key]; });
+    data[i] = {...merged, updatedBy:currentUser.name, updatedAt:now};
+    toast('تم حفظ التعديلات');
+  }
+  save(); closeForm(); refreshManagerFilter(); render();
+}
+
+/* ========= تصدير CSV ========= */
+function exportCsv(){
+  const rows = visibleProjects();
+  const head = ['الرقم','اسم المشروع','مدير المشروع','الحالة','تاريخ البدء','تاريخ الانتهاء','نسبة الإنجاز','الميزانية','آخر تحديث بواسطة','وقت آخر تحديث'];
+  const q = v => `"${String(v??'').replace(/"/g,'""')}"`;
+  const lines = [head.map(q).join(',')].concat(rows.map(p=>
+    [p.id,p.name,p.manager,p.status,p.start,p.end,p.percent,p.budget,p.updatedBy,p.updatedAt].map(q).join(',')));
+  const blob = new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'projects.csv'; a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* ========= الأحداث ========= */
+initControls();
+$('#userSelect').addEventListener('change', e=>{
+  currentUser = USERS.find(u=>u.id===e.target.value);
+  refreshManagerFilter(); render();
+  toast(`تم تسجيل الدخول باسم: ${currentUser.name}`);
+});
+['#q','#fStatus','#fManager'].forEach(s=>$(s).addEventListener('input', render));
+$('#rows').addEventListener('click', e=>{
+  const b = e.target.closest('[data-edit]'); if(b) openForm(b.dataset.edit);
+});
+$('#btnAdd').addEventListener('click', ()=>openForm(null));
+$('#btnCancel').addEventListener('click', closeForm);
+$('#overlay').addEventListener('mousedown', e=>{ if(e.target.id==='overlay') closeForm(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeForm(); });
+$('#form').addEventListener('submit', submitForm);
+$('#btnCsv').addEventListener('click', exportCsv);
+$('#btnReset').addEventListener('click', ()=>{
+  if(confirm('سيتم استبدال البيانات الحالية بالبيانات التجريبية. متأكد؟')){
+    localStorage.removeItem(STORE_KEY); data = load(); save(); render(); toast('تمت إعادة الضبط');
+  }
+});
+render();
+</script>
+</body>
+</html>
